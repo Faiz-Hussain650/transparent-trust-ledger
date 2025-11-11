@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="/trusts/{{ bill.trust_id }}" class="text-blue-500">← Back</a>
+<h1 class="text-2xl font-bold mt-2 mb-4">{{ bill.title }}</h1>
+
+<div class="p-4 bg-white rounded shadow mb-4">
+  <p class="mb-2">{{ bill.description }}</p>
+  <p><strong>Amount Required:</strong> ₹{{ bill.amount_required }}</p>
+  <p><strong>Collected:</strong> ₹{{ bill.amount_collected }}</p>
+  <p><strong>Status:</strong> {{ bill.status }}</p>
+
+  <button onclick="payNow('{{ bill.id }}')" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded">Donate Now</button>
+</div>
+
+<h2 class="text-xl font-semibold mb-2">Transactions</h2>
+{% if transactions %}
+  <ul class="space-y-2">
+  {% for tx in transactions %}
+    <li class="bg-gray-100 p-3 rounded">
+      ₹{{ tx.amount }} — {{ tx.created_at.strftime('%Y-%m-%d') }}  
+      <br>Hash: <code>{{ tx.canonical_hash }}</code>
+    </li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No transactions yet.</p>
+{% endif %}
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function payNow(billId) {
+  const amount = prompt("Enter amount to donate:");
+  if (!amount) return;
+
+  const res = await fetch(`/payments/create-order?bill_id=${billId}&amount=${amount}`, { method: "POST" });
+  const data = await res.json();
+
+  const options = {
+    key: data.razorpay_key_id,
+    amount: data.amount,
+    currency: data.currency,
+    name: "Transparent Trust Ledger",
+    description: "Donation Payment",
+    order_id: data.order_id,
+    handler: function (response) {
+      alert("Thank you! Payment successful. Transaction ID: " + response.razorpay_payment_id);
+    }
+  };
+
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+</script>
+{% endblock %}
